@@ -1,6 +1,6 @@
 services:
   # -----------------------------------------------------------
-  # CONTENEDOR 1: LA BASE DE DATOS MYSQL
+  # BASE DE DATOS: Compartida por toda la librería
   # -----------------------------------------------------------
   db-servicio:
     image: mysql:8.0
@@ -18,25 +18,37 @@ services:
       - persistencia_db:/var/lib/mysql
 
   # -----------------------------------------------------------
-  # CONTENEDOR 2: EL ENTORNO DE TRABAJO JAVA/SPRING BOOT
+  # MICROSERVICIO 2: CatalogService (Catálogo de Libros)
   # -----------------------------------------------------------
-  workspace-java:
+  catalog-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: entorno_programacion
+    container_name: catalog_service_container
     ports:
       - "8080:8080"
     depends_on:
       - db-servicio
     networks:
       - red_interna_proyecto
-    # El comando 'tail -f /dev/null' es un truco técnico.
-    # Obliga al contenedor a quedarse encendido de forma permanente 
-    # en estado de espera, para que podamos entrar a él a programar.
     command: tail -f /dev/null
-    # Vinculamos la carpeta vacía local con la ruta '/app' del contenedor.
     volumes:
-      - ./codigo-fuente:/app
-    # Por defecto, el contenedor iniciará en la carpeta /app
+      - ./catalog-service-code:/app
+    working_dir: /app
+
+  # -----------------------------------------------------------
+  # MICROSERVICIO 9: ReviewService (Valoraciones y Comentarios)
+  # -----------------------------------------------------------
+  review-service:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: review_service_container
+    ports:
+      - "8081:8081"
+    depends_on:
+      - db-servicio
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./review-service-code:/app
     working_dir: /app
 
 networks:

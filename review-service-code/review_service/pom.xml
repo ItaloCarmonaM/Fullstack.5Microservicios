@@ -8,10 +8,10 @@
 		<version>3.5.13</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>c1.duoc</groupId>
-	<artifactId>backend-api</artifactId>
+	<groupId>cl.duoc</groupId>
+	<artifactId>review_service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>backend-api</name>
+	<name>review_service</name>
 	<description/>
 	<url/>
 	<licenses>

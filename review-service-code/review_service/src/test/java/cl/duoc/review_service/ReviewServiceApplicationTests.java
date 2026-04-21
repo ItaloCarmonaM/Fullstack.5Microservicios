@@ -1,10 +1,10 @@
-package jar;
+package cl.duoc.review_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class BackendApiApplicationTests {
+class ReviewServiceApplicationTests {
 
 	@Test
 	void contextLoads() {

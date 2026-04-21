@@ -1,0 +1,15 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# IDEs
+.settings/
+.project/
+.classpath
+.factorypath
+.vscode/
+
+# Docker
+.DS_Store
