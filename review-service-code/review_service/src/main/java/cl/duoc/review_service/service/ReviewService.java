@@ -25,8 +25,8 @@ public class ReviewService {
         return reviewRepository.findById(id);
     }
 
-    public Optional<Review> buscarPorIdLibro(Long idLibro) {
-        return reviewRepository.findById(idLibro);
+    public List<Review> buscarPorIdLibro(Long idLibro) {
+        return reviewRepository.findByIdLibro(idLibro);
     }
 
     public List<Review> buscarPorIdUsuario(Long idUsuario) {

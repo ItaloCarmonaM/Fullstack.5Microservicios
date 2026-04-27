@@ -15,8 +15,6 @@ public class LibroService {
         this.libroRepository = libroRepository;
     }
 
-    // Registrar un nuevo libro (Las validaciones se realizan en el controlador con
-    // @Valid y en el modelo con anotaciones de validación)
     public Libro registrarLibro(Libro libro) {
         return libroRepository.save(libro);
     }
@@ -65,6 +63,7 @@ public class LibroService {
         return false;
     }
 
+    // Actualizar libro por id
     public Libro actualizarLibro(Long id, Libro libroActualizado) {
         Optional<Libro> libroExistenteOpt = libroRepository.findById(id);
         if (libroExistenteOpt.isPresent()) {

@@ -1,58 +1,99 @@
 services:
   # -----------------------------------------------------------
-  # BASE DE DATOS: Compartida por toda la librería
+  # M2. CatalogService (Catálogo de Libros)
   # -----------------------------------------------------------
-  db-servicio:
+  db-catalog:
     image: mysql:8.0
-    container_name: mysql_servidor
+    container_name: db_catalog
     environment:
       MYSQL_ROOT_PASSWORD: clave_maestra_root
-      MYSQL_DATABASE: universidad_backend
+      MYSQL_DATABASE: catalog_db
       MYSQL_USER: desarrollador
       MYSQL_PASSWORD: password_seguro_123
-    ports:
-      - "3306:3306"
     networks:
       - red_interna_proyecto
     volumes:
-      - persistencia_db:/var/lib/mysql
-
-  # -----------------------------------------------------------
-  # MICROSERVICIO 2: CatalogService (Catálogo de Libros)
-  # -----------------------------------------------------------
+      - persistencia_catalog:/var/lib/mysql
+# ----------------------------------------------------------------------
   catalog-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: catalog_service_container
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
-      - db-servicio
+      - db-catalog
     networks:
       - red_interna_proyecto
     command: tail -f /dev/null
     volumes:
-      - ./catalog-service-code:/app
+      - ./catalog-service-code/catalog-service:/app
+    working_dir: /app
+
+  # -----------------------------------------------------------
+  # M3. InventoryService (Catálogo de Libros)
+  # -----------------------------------------------------------
+  db-inventory:
+    image: mysql:8.0
+    container_name: db_inventory
+    environment:
+      MYSQL_ROOT_PASSWORD: clave_maestra_root
+      MYSQL_DATABASE: inventory_db
+      MYSQL_USER: desarrollador
+      MYSQL_PASSWORD: password_seguro_123
+    networks:
+      - red_interna_proyecto
+    volumes:
+      - persistencia_inventory:/var/lib/mysql
+# ----------------------------------------------------------------------
+  inventory-service:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: inventory_service_container
+    ports:
+      - "8082:8082"
+    depends_on:
+      - db-inventory
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./inventory-service-code/inventory-service:/app
     working_dir: /app
 
   # -----------------------------------------------------------
   # MICROSERVICIO 9: ReviewService (Valoraciones y Comentarios)
   # -----------------------------------------------------------
+  db-review:
+    image: mysql:8.0
+    container_name: db_review
+    environment:
+      MYSQL_ROOT_PASSWORD: clave_maestra_root
+      MYSQL_DATABASE: review_db
+      MYSQL_USER: desarrollador
+      MYSQL_PASSWORD: password_seguro_123
+    networks:
+      - red_interna_proyecto
+    volumes:
+      - persistencia_review:/var/lib/mysql
+    # ----------------------------------------------------------------------
   review-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: review_service_container
     ports:
-      - "8081:8081"
+      - "8088:8088"
     depends_on:
-      - db-servicio
+      - db-review
     networks:
       - red_interna_proyecto
     command: tail -f /dev/null
     volumes:
-      - ./review-service-code:/app
+      - ./review-service-code/review-service:/app
     working_dir: /app
 
 networks:
   red_interna_proyecto:
 
 volumes:
-  persistencia_db:
+  persistencia_catalog:
+  persistencia_review:
+  persistencia_inventory:
+

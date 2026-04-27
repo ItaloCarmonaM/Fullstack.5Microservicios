@@ -44,10 +44,10 @@ public class ReviewController {
 
     // Buscar review por idLibro
     @GetMapping("/idLibro/{idLibro}")
-    public ResponseEntity<Review> buscarPorIdLibro(@PathVariable Long idLibro) {
-        Optional<Review> review = reviewService.buscarPorIdLibro(idLibro);
-        if(review.isPresent()) {
-            return ResponseEntity.ok(review.get());
+    public ResponseEntity<List<Review>> buscarPorIdLibro(@PathVariable Long idLibro) {
+        List<Review> reviews = reviewService.buscarPorIdLibro(idLibro);
+        if(!reviews.isEmpty()) {
+            return ResponseEntity.ok(reviews);
         } else {    
             return ResponseEntity.notFound().build();
         }
@@ -83,10 +83,10 @@ public class ReviewController {
         return ResponseEntity.ok(reviews);
     }
 
-    // Eliminar libro por id
-    @DeleteMapping("/{idLibro}")
-    public ResponseEntity<Void> eliminarLibro(@PathVariable Long idLibro) {
-        boolean eliminado = reviewService.eliminarReview(idLibro);
+    // Eliminar review por id
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarReview(@PathVariable Long id) {
+        boolean eliminado = reviewService.eliminarReview(id);
         if (eliminado) {
             return ResponseEntity.noContent().build();
         } else {
