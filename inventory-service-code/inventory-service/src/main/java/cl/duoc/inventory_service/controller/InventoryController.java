@@ -1,19 +1,19 @@
 package cl.duoc.inventory_service.controller;
-import cl.duoc.inventory_service.model.Inventory;
+
+import cl.duoc.inventory_service.dto.InventoryCreateDTO;
+import cl.duoc.inventory_service.dto.InventoryDTO;
 import cl.duoc.inventory_service.service.InventoryService;
 import jakarta.validation.Valid;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
-import java.util.Optional;
-
-
 
 @RestController
-@RequestMapping("/api/v1/inventories")
+@RequestMapping("/api/v2/inventories")
 public class InventoryController {
+
     private final InventoryService inventoryService;
 
     public InventoryController(InventoryService inventoryService) {
@@ -21,55 +21,34 @@ public class InventoryController {
     }
 
     @PostMapping
-    public ResponseEntity<Inventory> crearInventory(@Valid @RequestBody Inventory inventory) {
-        Inventory nuevoInventario = inventoryService.crearInventory(inventory);
-        return new ResponseEntity<>(nuevoInventario, HttpStatus.CREATED);
+    public ResponseEntity<InventoryDTO> crearInventory(@Valid @RequestBody InventoryCreateDTO dto) {
+        return new ResponseEntity<>(inventoryService.crearInventory(dto), HttpStatus.CREATED);
     }
-    
+
     @GetMapping
-    public ResponseEntity<List<Inventory>> obtenerInventario(){
-        List<Inventory> inventarios = inventoryService.listarInventories();
-        return new ResponseEntity<>(inventarios, HttpStatus.OK);
+    public ResponseEntity<List<InventoryDTO>> obtenerTodos() {
+        return ResponseEntity.ok(inventoryService.listarInventories());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Inventory> buscarPorId(@PathVariable Long id) {
-        Optional<Inventory> inventory = inventoryService.buscarInventoryPorId(id);
-        if(inventory.isPresent()) {
-            return ResponseEntity.ok(inventory.get());
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<InventoryDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(inventoryService.buscarPorId(id));
     }
-    
-    // Buscar inventory por idLibro
+
     @GetMapping("/idLibro/{idLibro}")
-    public ResponseEntity<List<Inventory>> buscarPorIdLibro(@PathVariable Long idLibro) {
-        List<Inventory> inventarios = inventoryService.buscarInventoryPorIdLibro(idLibro);
-        if(!inventarios.isEmpty()) {
-            return ResponseEntity.ok(inventarios);
-        } else {    
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<InventoryDTO> buscarPorIdLibro(@PathVariable Long idLibro) {
+        return ResponseEntity.ok(inventoryService.buscarPorIdLibro(idLibro));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<InventoryDTO> actualizarStock(@PathVariable Long id, @Valid @RequestBody InventoryCreateDTO dto) {
+        return ResponseEntity.ok(inventoryService.actualizarStock(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarInventory(@PathVariable Long id) {
-        boolean eliminado = inventoryService.eliminarInventory(id);
-        if (eliminado) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-    
-    @PutMapping("/{id}")
-    public ResponseEntity<Inventory> actualizarInventory(@PathVariable Long id, @Valid @RequestBody Inventory inventoryActualizada) {
-        Optional<Inventory> updatedInventory = inventoryService.actualizarInventory(id, inventoryActualizada);
-        if (updatedInventory.isPresent()) {
-            return ResponseEntity.ok(updatedInventory.get());
-        } else {
-            return ResponseEntity.notFound().build();  
-        }
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        return inventoryService.eliminarInventory(id) 
+            ? ResponseEntity.noContent().build() 
+            : ResponseEntity.notFound().build();
     }
 }

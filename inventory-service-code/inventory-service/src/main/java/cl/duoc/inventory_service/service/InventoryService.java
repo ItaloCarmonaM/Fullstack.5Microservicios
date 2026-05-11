@@ -1,10 +1,13 @@
 package cl.duoc.inventory_service.service;
+
+import cl.duoc.inventory_service.dto.InventoryCreateDTO;
+import cl.duoc.inventory_service.dto.InventoryDTO;
 import cl.duoc.inventory_service.model.Inventory;
 import cl.duoc.inventory_service.repository.InventoryRepository;
-
 import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class InventoryService {
@@ -14,29 +17,36 @@ public class InventoryService {
         this.inventoryRepository = inventoryRepository;
     }
 
-    public List<Inventory> listarInventories() {
-        return inventoryRepository.findAll();
+    public InventoryDTO crearInventory(InventoryCreateDTO dto) {
+        Inventory inventory = new Inventory();
+        inventory.setIdLibro(dto.getIdLibro());
+        inventory.setStock(dto.getStock());
+        return convertirADTO(inventoryRepository.save(inventory));
     }
 
-    public Optional<Inventory> buscarInventoryPorId(Long id) {
-        return inventoryRepository.findById(id);
+    public List<InventoryDTO> listarInventories() {
+        return inventoryRepository.findAll().stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
     }
 
-    public List<Inventory> buscarInventoryPorIdLibro(Long idLibro) {
-        Inventory inventory = inventoryRepository.findByIdLibro(idLibro);
-        return inventory != null ? List.of(inventory) : List.of();
+    public InventoryDTO buscarPorId(Long id) {
+        return inventoryRepository.findById(id)
+                .map(this::convertirADTO)
+                .orElseThrow(() -> new InventoryNotFoundException(id));
     }
 
-    public Inventory crearInventory(Inventory inventory) {
-        return inventoryRepository.save(inventory);
+    public InventoryDTO buscarPorIdLibro(Long idLibro) {
+        Inventory inv = inventoryRepository.findByIdLibro(idLibro);
+        if (inv == null) throw new InventoryNotFoundException("No hay stock registrado para el libro: " + idLibro);
+        return convertirADTO(inv);
     }
 
-    public Optional<Inventory> actualizarInventory(Long id, Inventory updatedInventory) {
+    public InventoryDTO actualizarStock(Long id, InventoryCreateDTO dto) {
         return inventoryRepository.findById(id).map(inventory -> {
-            inventory.setIdLibro(updatedInventory.getIdLibro());
-            inventory.setStock(updatedInventory.getStock());
-            return inventoryRepository.save(inventory);
-        });
+            inventory.setStock(dto.getStock());
+            return convertirADTO(inventoryRepository.save(inventory));
+        }).orElseThrow(() -> new InventoryNotFoundException(id));
     }
 
     public boolean eliminarInventory(Long id) {
@@ -46,5 +56,12 @@ public class InventoryService {
         }
         return false;
     }
-    
+
+    private InventoryDTO convertirADTO(Inventory inventory) {
+        return new InventoryDTO(inventory.getId(), inventory.getIdLibro(), inventory.getStock());
+    }
+
+    public static class InventoryNotFoundException extends RuntimeException {
+        public InventoryNotFoundException(Object id) { super("Inventario no encontrado: " + id); }
+    }
 }

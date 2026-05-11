@@ -60,6 +60,66 @@ services:
     working_dir: /app
 
   # -----------------------------------------------------------
+  # M4. CartService (Gestión de Carrito de Compras)
+  # -----------------------------------------------------------
+  db-cart:
+    image: mysql:8.0
+    container_name: db_cart
+    environment:
+      MYSQL_ROOT_PASSWORD: clave_maestra_root
+      MYSQL_DATABASE: cart_db
+      MYSQL_USER: desarrollador
+      MYSQL_PASSWORD: password_seguro_123
+    networks:
+      - red_interna_proyecto
+    volumes:
+      - persistencia_cart:/var/lib/mysql
+# ----------------------------------------------------------------------
+  cart-service:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: cart_service_container
+    ports:
+      - "8083:8083"
+    depends_on:
+      - db-cart
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./cart-service-code/cart-service:/app
+    working_dir: /app
+
+  # -----------------------------------------------------------
+  # M5. OrderService (Gestión de Ordenes de Compra)
+  # -----------------------------------------------------------
+  db-order:
+    image: mysql:8.0
+    container_name: db_order
+    environment:
+      MYSQL_ROOT_PASSWORD: clave_maestra_root
+      MYSQL_DATABASE: order_db
+      MYSQL_USER: desarrollador
+      MYSQL_PASSWORD: password_seguro_123
+    networks:
+      - red_interna_proyecto
+    volumes:
+      - persistencia_order:/var/lib/mysql
+# ----------------------------------------------------------------------
+  order-service:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: order_service_container
+    ports:
+      - "8084:8084"
+    depends_on:
+      - db-order
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./order-service-code/order-service:/app
+    working_dir: /app
+
+  # -----------------------------------------------------------
   # MICROSERVICIO 9: ReviewService (Valoraciones y Comentarios)
   # -----------------------------------------------------------
   db-review:
@@ -96,4 +156,6 @@ volumes:
   persistencia_catalog:
   persistencia_review:
   persistencia_inventory:
+  persistencia_cart:
+  persistencia_order:
 

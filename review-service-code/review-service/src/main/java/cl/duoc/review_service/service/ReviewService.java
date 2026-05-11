@@ -1,10 +1,14 @@
 package cl.duoc.review_service.service;
+
+import cl.duoc.review_service.dto.ReviewCreateDTO;
+import cl.duoc.review_service.dto.ReviewDTO;
 import cl.duoc.review_service.model.Review;
 import cl.duoc.review_service.repository.ReviewRepository;
-
 import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Service
 public class ReviewService {
     private final ReviewRepository reviewRepository;
@@ -13,35 +17,53 @@ public class ReviewService {
         this.reviewRepository = reviewRepository;
     }
 
-    public Review saveReview(Review review) {
-        return reviewRepository.save(review);
-    }
-    
-    public List<Review> listaReviews() {
-        return reviewRepository.findAll();
-    }
-
-    public Optional<Review> buscarPorId(Long id) {
-        return reviewRepository.findById(id);
-    }
-
-    public List<Review> buscarPorIdLibro(Long idLibro) {
-        return reviewRepository.findByIdLibro(idLibro);
+    public ReviewDTO saveReview(ReviewCreateDTO dto) {
+        Review review = new Review();
+        review.setIdLibro(dto.getIdLibro());
+        review.setIdUsuario(dto.getIdUsuario());
+        review.setComentario(dto.getComentario());
+        review.setCalificacion(dto.getCalificacion());
+        
+        Review guardada = reviewRepository.save(review);
+        return convertirADTO(guardada);
     }
 
-    public List<Review> buscarPorIdUsuario(Long idUsuario) {
-        return reviewRepository.findByIdUsuario(idUsuario);
+    public List<ReviewDTO> listaReviews() {
+        return reviewRepository.findAll().stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
     }
 
-    public List<Review> buscarPorIdLibroEIdUsuario(Long idLibro, Long idUsuario) {
-        return reviewRepository.findByIdLibroAndIdUsuario(idLibro, idUsuario);
+    public ReviewDTO buscarPorId(Long id) {
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() -> new ReviewNotFoundException("Reseña no encontrada: " + id));
+        return convertirADTO(review);
     }
 
-    public List<Review> buscarPorCalificacion(Integer calificacion) {
-        return reviewRepository.findByCalificacion(calificacion);
+    public List<ReviewDTO> buscarPorIdLibro(Long idLibro) {
+        return reviewRepository.findByIdLibro(idLibro).stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
     }
 
-    // Eliminar review por id
+    public List<ReviewDTO> buscarPorIdUsuario(Long idUsuario) {
+        return reviewRepository.findByIdUsuario(idUsuario).stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<ReviewDTO> buscarPorIdLibroEIdUsuario(Long idLibro, Long idUsuario) {
+        return reviewRepository.findByIdLibroAndIdUsuario(idLibro, idUsuario).stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<ReviewDTO> buscarPorCalificacion(Integer calificacion) {
+        return reviewRepository.findByCalificacion(calificacion).stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
     public boolean eliminarReview(Long id) {
         if (reviewRepository.existsById(id)) {
             reviewRepository.deleteById(id);
@@ -50,18 +72,30 @@ public class ReviewService {
         return false;
     }
 
-    // Actualizar review por id
-    public Review actualizarReview(Long id, Review reviewActualizada) {
-        Optional<Review> reviewExistente = reviewRepository.findById(id);
-        if (reviewExistente.isPresent()) {
-            Review review = reviewExistente.get();
-            review.setIdLibro(reviewActualizada.getIdLibro());
-            review.setIdUsuario(reviewActualizada.getIdUsuario());
-            review.setComentario(reviewActualizada.getComentario());
-            review.setCalificacion(reviewActualizada.getCalificacion());
-            return reviewRepository.save(review);
-        }
-        return null;
-    }      
+    public ReviewDTO actualizarReview(Long id, ReviewCreateDTO dto) {
+        return reviewRepository.findById(id)
+                .map(review -> 
+                {
+                    review.setComentario(dto.getComentario());
+                    review.setCalificacion(dto.getCalificacion());
+                    return convertirADTO(reviewRepository.save(review));
+                })
+                .orElseThrow(() -> new ReviewNotFoundException("No existe la reseña ID: " + id));
+    }
 
+    private ReviewDTO convertirADTO(Review review) {
+        return new ReviewDTO(
+            review.getId(),
+            review.getIdLibro(),
+            review.getIdUsuario(),
+            review.getComentario(),
+            review.getCalificacion()
+        );
+    }
+
+    public static class ReviewNotFoundException extends RuntimeException {
+        public ReviewNotFoundException(String mensaje) {
+            super(mensaje);
+        }
+    }
 }
