@@ -1,18 +1,18 @@
-package cl.duoc.cart_service.dto;
+package cl.duoc.order_service.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class CarritoDTO {
     private Long id;
     private Long idUsuario;
     private Long idLibro;
     private Integer cantidad;
-
+    
     private String tituloLibro;
     private Double precioUnitario;
     private Double subtotal;

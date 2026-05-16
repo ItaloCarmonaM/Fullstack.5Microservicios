@@ -17,7 +17,7 @@ services:
 # ----------------------------------------------------------------------
   catalog-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: catalog_service_container
+    container_name: catalog-service-container
     ports:
       - "8081:8081"
     depends_on:
@@ -47,7 +47,7 @@ services:
 # ----------------------------------------------------------------------
   inventory-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: inventory_service_container
+    container_name: inventory-service-container
     ports:
       - "8082:8082"
     depends_on:
@@ -77,7 +77,7 @@ services:
 # ----------------------------------------------------------------------
   cart-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: cart_service_container
+    container_name: cart-service-container
     ports:
       - "8083:8083"
     depends_on:
@@ -107,7 +107,7 @@ services:
 # ----------------------------------------------------------------------
   order-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: order_service_container
+    container_name: order-service-container
     ports:
       - "8084:8084"
     depends_on:
@@ -137,7 +137,7 @@ services:
     # ----------------------------------------------------------------------
   review-service:
     image: maven:3.9-eclipse-temurin-21
-    container_name: review_service_container
+    container_name: review-service-container
     ports:
       - "8088:8088"
     depends_on:
