@@ -20,10 +20,10 @@ public class Review {
     private Long id;
 
     @NotNull(message = "El ID del libro no puede ser nulo")
-    private Long idLibro; // ID del libro que viene del CatalogService
+    private Long idLibro;
 
     @NotNull(message = "El ID del usuario no puede ser nulo")
-    private Long idUsuario; // ID del usuario que viene del UserService
+    private Long idUsuario; 
 
     @NotBlank(message = "El comentario no puede estar vacío")
     private String comentario;
@@ -31,5 +31,5 @@ public class Review {
     @Min(value = 1, message = "La calificación debe ser un número entre 1 y 5")
     @Max(value = 5, message = "La calificación debe ser un número entre 1 y 5")
     @NotNull(message = "La calificación no puede ser nula")
-    private Integer calificacion; // Calificación de 1 a 5 estrellas
+    private Integer calificacion;
 }

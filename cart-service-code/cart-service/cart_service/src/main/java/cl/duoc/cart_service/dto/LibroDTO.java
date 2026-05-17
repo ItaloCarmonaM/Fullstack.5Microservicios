@@ -6,5 +6,5 @@ import lombok.Data;
 public class LibroDTO {
     private Long id;
     private String titulo;
-    private Double precio; // Importante para calcular totales en el carrito
+    private Double precio;
 }

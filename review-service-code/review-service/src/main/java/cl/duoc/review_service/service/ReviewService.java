@@ -29,24 +29,19 @@ public class ReviewService {
     private CatalogClient catalogClient; 
 
     public ReviewDTO saveReview(ReviewCreateDTO dto) {
-        // Log antes de la llamada externa
         log.info("Solicitando validación de existencia para libro ID={} al servicio Catalog", dto.getIdLibro());
 
         LibroDTO libro;
         try {
 
             libro = catalogClient.getLibroById(dto.getIdLibro());
-            
-            // Log cuando llega la respuesta exitosa
             log.info("Libro recibido correctamente: ID={}, Título='{}'", libro.getId(), libro.getTitulo());
 
         } catch (FeignException.NotFound e) {
-            // Log cuando el recurso no existe en el destino
             log.warn("Servicio Catalog respondió: El libro ID={} no existe", dto.getIdLibro());
             throw new RecursoNoEncontradoException("No se puede guardar la reseña: El libro especificado no existe.");
             
         } catch (FeignException e) {
-            // Log cuando falla la red o el servicio destino está caído
             log.error("Error crítico al comunicarse con servicio Catalog: {}", e.getMessage());
             throw new ServicioNoDisponibleException("El servicio de Catálogo no se encuentra disponible temporalmente.");
         }
@@ -59,7 +54,6 @@ public class ReviewService {
 
         Review guardada = reviewRepository.save(review);
         
-        // Log de evento de negocio exitoso
         log.info("Reseña creada exitosamente: ID={}, para Libro ID={}", guardada.getId(), guardada.getIdLibro());
 
         return convertirADTO(guardada);

@@ -16,7 +16,6 @@ public class LibroService {
     @Autowired
     private LibroRepository libroRepository;
 
-    // Crear: Recibe CreateDTO -> Guarda Entidad -> Retorna DTO salida
     public LibroDTO registrarLibro(LibroCreateDTO dto) {
         Libro libro = new Libro();
         libro.setTitulo(dto.getTitulo());
@@ -30,14 +29,12 @@ public class LibroService {
         return convertirADTO(guardado);
     }
 
-    // Listar todos: Retorna lista de DTOs
     public List<LibroDTO> listaLibros() {
         return libroRepository.findAll().stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
     }
 
-    // Buscar por ID: Retorna DTO o lanza excepción
     public LibroDTO buscarPorId(Long id) {
         Libro libro = libroRepository.findById(id)
                 .orElseThrow(() -> new LibroNotFoundException(id));
@@ -93,7 +90,7 @@ public class LibroService {
                 .collect(Collectors.toList());
     }
 
-    // Eliminar: Mantiene lógica de boolean
+    // Eliminar libro por id
     public boolean eliminarLibro(Long id) {
         if (libroRepository.existsById(id)) {
             libroRepository.deleteById(id);
@@ -102,7 +99,7 @@ public class LibroService {
         return false;
     }
 
-    // Actualizar: Recibe CreateDTO (porque trae los mismos campos) y retorna DTO salida
+    // Actualizar libro por id
     public LibroDTO actualizarLibro(Long id, LibroCreateDTO dto) {
         return libroRepository.findById(id)
                 .map(libroExistente -> {
@@ -118,7 +115,7 @@ public class LibroService {
                 .orElseThrow(() -> new LibroNotFoundException(id));
     }
 
-    // --- MÉTODOS DE APOYO (MAPPERS) ---
+    // Metodos para mapear
 
     private LibroDTO convertirADTO(Libro libro) {
         return new LibroDTO(

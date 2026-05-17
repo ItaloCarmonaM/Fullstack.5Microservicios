@@ -36,7 +36,7 @@ public class OrdenService {
     public OrdenDTO crearOrden(Long idUsuario) {
         log.info("Iniciando creación de orden para el usuario ID={}", idUsuario);
 
-        // 1. LLAMADA REMOTA A CART
+        // 1. Llamada a carrito para obtener ítems con subtotales precalculados
         log.info("Solicitando ítems del carrito con montos precalculados al servicio Cart para usuario ID={}", idUsuario);
         List<CarritoDTO> items;
         try {
@@ -54,7 +54,7 @@ public class OrdenService {
             throw new RuntimeException("El carrito está vacío.");
         }
 
-        // 2. SUMAR LOS SUBTOTALES DIRECTAMENTE (¡Ahora sí compila perfectamente!)
+        // 2. Sumar subtotales para obtener el total de la orden
         log.info("Calculando total acumulado usando subtotales del carrito...");
         double totalOrden = items.stream()
                                  .mapToDouble(item -> item.getSubtotal() != null ? item.getSubtotal() : 0.0)
@@ -62,7 +62,7 @@ public class OrdenService {
 
         log.info("Monto total verificado para la orden: ${}", totalOrden);
 
-        // 3. GUARDAR ORDEN EN BASE DE DATOS
+        // 3. Guardar orden con estado "PROCESADA"
         Orden nuevaOrden = new Orden();
         nuevaOrden.setIdUsuario(idUsuario);
         nuevaOrden.setTotal(totalOrden);
@@ -72,7 +72,7 @@ public class OrdenService {
         Orden ordenGuardada = ordenRepository.save(nuevaOrden);
         log.info("Orden guardada exitosamente con ID={} en estado PROCESADA", ordenGuardada.getId());
 
-        // 4. VACIAR CARRITO REMOTO
+        // 4. Vaciar el carrito del usuario de forma síncrona
         log.info("Solicitando vaciado síncrono del carrito para el usuario ID={}", idUsuario);
         try {
             carritoClient.vaciar(idUsuario);

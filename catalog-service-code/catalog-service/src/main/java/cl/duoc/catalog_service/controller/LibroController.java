@@ -21,14 +21,12 @@ public class LibroController {
         this.libroService = libroService;
     }
 
-    // Registrar un nuevo libro: Recibe CreateDTO y devuelve LibroDTO
     @PostMapping
     public ResponseEntity<LibroDTO> registrarLibro(@Valid @RequestBody LibroCreateDTO dto) {
         LibroDTO nuevoLibro = libroService.registrarLibro(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevoLibro);
     }
 
-    // Listar todos los libros: Devuelve lista de DTOs
     @GetMapping
     public ResponseEntity<List<LibroDTO>> listaLibros() {
         List<LibroDTO> libros = libroService.listaLibros();
@@ -38,7 +36,6 @@ public class LibroController {
     // Buscar libro por id: Devuelve DTO
     @GetMapping("/{id}")
     public ResponseEntity<LibroDTO> buscarPorId(@PathVariable Long id) {
-        // El service ya lanza LibroNotFoundException si no existe
         return ResponseEntity.ok(libroService.buscarPorId(id));
     }
 
@@ -102,7 +99,7 @@ public class LibroController {
         return eliminado ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
-    // Actualizar libro por id: Recibe CreateDTO y devuelve LibroDTO
+    // Actualizar libro por id
     @PutMapping("/{id}")
     public ResponseEntity<LibroDTO> actualizarLibro(@PathVariable Long id, 
                                                    @Valid @RequestBody LibroCreateDTO dto) {

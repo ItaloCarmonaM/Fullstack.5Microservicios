@@ -28,5 +28,5 @@ public class Orden {
     private Double total;
 
     @NotNull(message = "El estado no puede estar vacío")
-    private String estado; // Ejemplo: PENDIENTE, PAGADA, ENVIADA, CANCELADA
+    private String estado;
 }
