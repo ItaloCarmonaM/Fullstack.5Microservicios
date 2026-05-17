@@ -1,14 +1,16 @@
 package cl.duoc.review_service.service;
 
 import cl.duoc.review_service.client.CatalogClient;
+import cl.duoc.review_service.client.UserClient; // Importamos el nuevo cliente
 import cl.duoc.review_service.dto.ReviewCreateDTO;
 import cl.duoc.review_service.dto.ReviewDTO;
 import cl.duoc.review_service.dto.LibroDTO;
+import cl.duoc.review_service.dto.UserDTO; // Importamos el DTO de usuario
 import cl.duoc.review_service.exception.RecursoNoEncontradoException;
 import cl.duoc.review_service.exception.ServicioNoDisponibleException;
 import cl.duoc.review_service.model.Review;
 import cl.duoc.review_service.repository.ReviewRepository;
-import feign.FeignException; // Importante para atrapar errores de Feign
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,33 +30,47 @@ public class ReviewService {
     @Autowired
     private CatalogClient catalogClient; 
 
-    public ReviewDTO saveReview(ReviewCreateDTO dto) {
-        log.info("Solicitando validación de existencia para libro ID={} al servicio Catalog", dto.getIdLibro());
+    @Autowired
+    private UserClient userClient; // Inyección de dependencia del servicio externo
 
+    public ReviewDTO saveReview(ReviewCreateDTO dto) {
+        // 1. VALIDACIÓN DEL LIBRO (Catálogo Local)
+        log.info("Solicitando validación de existencia para libro ID={} al servicio Catalog", dto.getIdLibro());
         LibroDTO libro;
         try {
-
             libro = catalogClient.getLibroById(dto.getIdLibro());
-            log.info("Libro recibido correctamente: ID={}, Título='{}'", libro.getId(), libro.getTitulo());
-
+            log.info("Libro confirmado correctamente: ID={}, Título='{}'", libro.getId(), libro.getTitulo());
         } catch (FeignException.NotFound e) {
-            log.warn("Servicio Catalog respondió: El libro ID={} no existe", dto.getIdLibro());
+            log.warn("Servicio Catalog respondió 404: El libro ID={} no existe", dto.getIdLibro());
             throw new RecursoNoEncontradoException("No se puede guardar la reseña: El libro especificado no existe.");
-            
         } catch (FeignException e) {
-            log.error("Error crítico al comunicarse con servicio Catalog: {}", e.getMessage());
+            log.error("Error de comunicación con el servicio Catalog: {}", e.getMessage());
             throw new ServicioNoDisponibleException("El servicio de Catálogo no se encuentra disponible temporalmente.");
         }
 
+        // 2. VALIDACIÓN DEL USUARIO (Servicio Externo en otra EC2)
+        log.info("Solicitando validación de existencia para usuario ID={} al servicio externo de Usuarios", dto.getIdUsuario());
+        UserDTO usuario;
+        try {
+            usuario = userClient.getUserById(dto.getIdUsuario());
+            log.info("Usuario verificado exitosamente en la otra EC2: ID={}, Nombre='{}'", usuario.getId(), usuario.getNombreCompleto());
+        } catch (FeignException.NotFound e) {
+            log.warn("Servicio de Usuarios respondió 404: El usuario ID={} no existe en el sistema", dto.getIdUsuario());
+            throw new RecursoNoEncontradoException("No se puede guardar la reseña: El usuario especificado no existe en los registros.");
+        } catch (FeignException e) {
+            log.error("Falla crítica en la comunicación de red con la EC2 externa de Usuarios: {}", e.getMessage());
+            throw new ServicioNoDisponibleException("El servicio de verificación de usuarios no responde. Intente más tarde.");
+        }
+
+        // 3. GENERAR Y PERSISTIR LA RESEÑA
         Review review = new Review();
         review.setIdLibro(libro.getId()); 
-        review.setIdUsuario(dto.getIdUsuario()); 
+        review.setIdUsuario(usuario.getId()); // Usamos el ID validado por el servicio de usuarios
         review.setComentario(dto.getComentario());
         review.setCalificacion(dto.getCalificacion());
 
         Review guardada = reviewRepository.save(review);
-        
-        log.info("Reseña creada exitosamente: ID={}, para Libro ID={}", guardada.getId(), guardada.getIdLibro());
+        log.info("Reseña ID={} guardada exitosamente en la base de datos.", guardada.getId());
 
         return convertirADTO(guardada);
     }

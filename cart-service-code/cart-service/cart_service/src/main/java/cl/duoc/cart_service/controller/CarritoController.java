@@ -25,6 +25,16 @@ public class CarritoController {
         return new ResponseEntity<>(carritoService.agregarItem(dto), HttpStatus.CREATED);
     }
 
+    @GetMapping
+    public ResponseEntity<List<CarritoDTO>> obtenerTodos() {
+        return ResponseEntity.ok(carritoService.listarCarritos());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CarritoDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(carritoService.buscarPorId(id));
+    }
+
     @GetMapping("/usuario/{idUsuario}")
     public ResponseEntity<List<CarritoDTO>> obtenerCarrito(@PathVariable Long idUsuario) {
         List<CarritoDTO> items = carritoService.obtenerPorUsuario(idUsuario);

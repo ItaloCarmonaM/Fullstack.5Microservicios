@@ -2,6 +2,7 @@ package cl.duoc.catalog_service.service;
 
 import cl.duoc.catalog_service.dto.LibroCreateDTO;
 import cl.duoc.catalog_service.dto.LibroDTO;
+import cl.duoc.catalog_service.exceptions.LibroNotFoundException;
 import cl.duoc.catalog_service.model.Libro;
 import cl.duoc.catalog_service.repository.LibroRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,10 +130,4 @@ public class LibroService {
         );
     }
 
-    // Excepción personalizada interna
-    public static class LibroNotFoundException extends RuntimeException {
-        public LibroNotFoundException(Long id) {
-            super("No se encontró el libro con id: " + id);
-        }
-    }
 }

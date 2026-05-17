@@ -2,10 +2,12 @@ package cl.duoc.cart_service.service;
 
 import cl.duoc.cart_service.client.CatalogClient;
 import cl.duoc.cart_service.client.InventoryClient;
+import cl.duoc.cart_service.client.UserClient;
 import cl.duoc.cart_service.dto.CarritoCreateDTO;
 import cl.duoc.cart_service.dto.CarritoDTO;
 import cl.duoc.cart_service.dto.InventoryDTO;
 import cl.duoc.cart_service.dto.LibroDTO;
+import cl.duoc.cart_service.dto.UserDTO;
 import cl.duoc.cart_service.exception.RecursoNoEncontradoException;
 import cl.duoc.cart_service.exception.ServicioNoDisponibleException;
 import cl.duoc.cart_service.model.Carrito;
@@ -34,12 +36,26 @@ public class CarritoService {
     @Autowired
     private InventoryClient inventoryClient; 
 
+    @Autowired
+    private UserClient userClient;
+
     public CarritoService(CarritoRepository carritoRepository) {
         this.carritoRepository = carritoRepository;
     }
 
     public CarritoDTO agregarItem(CarritoCreateDTO dto) {
         log.info("Iniciando proceso para agregar ítem. Libro ID: {} para Usuario ID: {}", dto.getIdLibro(), dto.getIdUsuario());
+        log.info("Solicitando validación de existencia para usuario ID={} al servicio externo de Usuarios", dto.getIdUsuario());
+        try {
+            UserDTO usuario = userClient.getUserById(dto.getIdUsuario());
+            log.info("Usuario validado correctamente en la otra EC2: ID={}, Nombre='{}'", usuario.getId(), usuario.getNombreCompleto());
+        } catch (FeignException.NotFound e) {
+            log.warn("Servicio de Usuarios respondió 404: El usuario ID={} no existe", dto.getIdUsuario());
+            throw new RecursoNoEncontradoException("No se puede agregar al carrito: El usuario especificado no existe.");
+        } catch (FeignException e) {
+            log.error("Falla crítica en la comunicación de red con la EC2 de Usuarios: {}", e.getMessage());
+            throw new ServicioNoDisponibleException("El servicio de verificación de usuarios no responde temporalmente.");
+        }
 
         log.info("Solicitando validación de existencia para libro ID={} al servicio Catalog", dto.getIdLibro());
         LibroDTO libro;
@@ -92,8 +108,41 @@ public class CarritoService {
         return convertirADTO(guardadoNuevo);
     }
 
+    // ==========================================
+    // NUEVO MÉTODO: BUSCAR TODOS LOS ÍTEMS DE TODOS LOS CARRITOS
+    // ==========================================
+    public List<CarritoDTO> listarCarritos() {
+        log.info("Solicitando el listado global de todos los ítems de carritos en el sistema");
+        return carritoRepository.findAll().stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    // ==========================================
+    // NUEVO MÉTODO: BUSCAR UN ÍTEM ESPECÍFICO DEL CARRITO POR SU ID
+    // ==========================================
+    public CarritoDTO buscarPorId(Long id) {
+        log.info("Buscando ítem de carrito con ID={}", id);
+        Carrito carrito = carritoRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("No se encontró el ítem de carrito con ID={}", id);
+                    return new RecursoNoEncontradoException("Ítem de carrito no encontrado con el ID: " + id);
+                });
+        return convertirADTO(carrito);
+    }
+
     public List<CarritoDTO> obtenerPorUsuario(Long idUsuario) {
         log.info("Solicitando listado de carrito para el usuario ID={}", idUsuario);
+        
+        try {
+            userClient.getUserById(idUsuario);
+        } catch (FeignException.NotFound e) {
+            log.warn("Intento de listar carrito para usuario inexistente ID={}", idUsuario);
+            throw new RecursoNoEncontradoException("El usuario especificado no existe.");
+        } catch (FeignException e) {
+            log.error("No se pudo verificar el usuario para listar carrito, omitiendo error crítico.");
+        }
+
         return carritoRepository.findByIdUsuario(idUsuario).stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());

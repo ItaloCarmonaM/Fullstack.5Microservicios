@@ -14,7 +14,7 @@ services:
       - red_interna_proyecto
     volumes:
       - persistencia_catalog:/var/lib/mysql
-# ----------------------------------------------------------------------
+
   catalog-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: catalog-service-container
@@ -28,9 +28,13 @@ services:
     volumes:
       - ./catalog-service-code/catalog-service:/app
     working_dir: /app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db_catalog:3306/catalog_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=desarrollador
+      - SPRING_DATASOURCE_PASSWORD=password_seguro_123
 
   # -----------------------------------------------------------
-  # M3. InventoryService (Catálogo de Libros)
+  # M3. InventoryService (Inventario/Stock)
   # -----------------------------------------------------------
   db-inventory:
     image: mysql:8.0
@@ -44,7 +48,7 @@ services:
       - red_interna_proyecto
     volumes:
       - persistencia_inventory:/var/lib/mysql
-# ----------------------------------------------------------------------
+
   inventory-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: inventory-service-container
@@ -58,6 +62,12 @@ services:
     volumes:
       - ./inventory-service-code/inventory-service:/app
     working_dir: /app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db_inventory:3306/inventory_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=desarrollador
+      - SPRING_DATASOURCE_PASSWORD=password_seguro_123
+      # Comunicación Feign interna (Usa el container_name del catálogo)
+      - CATALOG_SERVICE_URL=http://catalog-service-container:8081
 
   # -----------------------------------------------------------
   # M4. CartService (Gestión de Carrito de Compras)
@@ -74,7 +84,7 @@ services:
       - red_interna_proyecto
     volumes:
       - persistencia_cart:/var/lib/mysql
-# ----------------------------------------------------------------------
+
   cart-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: cart-service-container
@@ -88,6 +98,14 @@ services:
     volumes:
       - ./cart-service-code/cart-service:/app
     working_dir: /app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db_cart:3306/cart_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=desarrollador
+      - SPRING_DATASOURCE_PASSWORD=password_seguro_123
+      # El carrito mira al catálogo y al inventario dentro de tu misma red
+      - CATALOG_SERVICE_URL=http://catalog-service-container:8081
+      - INVENTORY_SERVICE_URL=http://inventory-service-container:8082
+      - USERS_URL=http://44.196.219.155:8080
 
   # -----------------------------------------------------------
   # M5. OrderService (Gestión de Ordenes de Compra)
@@ -104,7 +122,7 @@ services:
       - red_interna_proyecto
     volumes:
       - persistencia_order:/var/lib/mysql
-# ----------------------------------------------------------------------
+
   order-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: order-service-container
@@ -118,6 +136,14 @@ services:
     volumes:
       - ./order-service-code/order-service:/app
     working_dir: /app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db_order:3306/order_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=desarrollador
+      - SPRING_DATASOURCE_PASSWORD=password_seguro_123
+      # La orden necesita comunicarse con tu carrito local
+      - CART_SERVICE_URL=http://cart-service-container:8083
+      
+      - USERS_URL=http://44.196.219.155:8080
 
   # -----------------------------------------------------------
   # MICROSERVICIO 9: ReviewService (Valoraciones y Comentarios)
@@ -134,7 +160,7 @@ services:
       - red_interna_proyecto
     volumes:
       - persistencia_review:/var/lib/mysql
-    # ----------------------------------------------------------------------
+
   review-service:
     image: maven:3.9-eclipse-temurin-21
     container_name: review-service-container
@@ -148,9 +174,18 @@ services:
     volumes:
       - ./review-service-code/review-service:/app
     working_dir: /app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db_review:3306/review_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=desarrollador
+      - SPRING_DATASOURCE_PASSWORD=password_seguro_123
+
+      - CATALOG_SERVICE_URL=http://catalog-service-container:8081
+
+      - USERS_URL=http://44.196.219.155:8080
 
 networks:
   red_interna_proyecto:
+    driver: bridge
 
 volumes:
   persistencia_catalog:
@@ -158,4 +193,3 @@ volumes:
   persistencia_inventory:
   persistencia_cart:
   persistencia_order:
-

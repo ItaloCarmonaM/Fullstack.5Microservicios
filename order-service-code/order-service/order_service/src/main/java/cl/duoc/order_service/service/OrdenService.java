@@ -1,8 +1,10 @@
 package cl.duoc.order_service.service;
 
 import cl.duoc.order_service.client.CarritoClient;
+import cl.duoc.order_service.client.UserClient;
 import cl.duoc.order_service.dto.CarritoDTO;
 import cl.duoc.order_service.dto.OrdenDTO;
+import cl.duoc.order_service.dto.UserDTO;
 import cl.duoc.order_service.exception.RecursoNoEncontradoException;
 import cl.duoc.order_service.exception.ServicioNoDisponibleException;
 import cl.duoc.order_service.model.Orden;
@@ -28,6 +30,9 @@ public class OrdenService {
     @Autowired
     private CarritoClient carritoClient;
 
+    @Autowired
+    private UserClient userClient;
+
     public OrdenService(OrdenRepository ordenRepository) {
         this.ordenRepository = ordenRepository;
     }
@@ -35,8 +40,18 @@ public class OrdenService {
     @Transactional
     public OrdenDTO crearOrden(Long idUsuario) {
         log.info("Iniciando creación de orden para el usuario ID={}", idUsuario);
+        log.info("Solicitando validación de existencia para usuario ID={} al servicio remoto de Usuarios", idUsuario);
+        try {
+            UserDTO usuario = userClient.getUserById(idUsuario);
+            log.info("Usuario verificado con éxito en la otra EC2. Comprador: '{}'", usuario.getNombreCompleto());
+        } catch (FeignException.NotFound e) {
+            log.warn("Servicio de Usuarios respondió 404: El usuario ID={} no existe", idUsuario);
+            throw new RecursoNoEncontradoException("No se puede procesar la orden: El usuario especificado no existe.");
+        } catch (FeignException e) {
+            log.error("Error crítico de comunicación con la EC2 de Usuarios: {}", e.getMessage());
+            throw new ServicioNoDisponibleException("El servicio de verificación de usuarios no está disponible.");
+        }
 
-        // 1. Llamada a carrito para obtener ítems con subtotales precalculados
         log.info("Solicitando ítems del carrito con montos precalculados al servicio Cart para usuario ID={}", idUsuario);
         List<CarritoDTO> items;
         try {
@@ -54,7 +69,6 @@ public class OrdenService {
             throw new RuntimeException("El carrito está vacío.");
         }
 
-        // 2. Sumar subtotales para obtener el total de la orden
         log.info("Calculando total acumulado usando subtotales del carrito...");
         double totalOrden = items.stream()
                                  .mapToDouble(item -> item.getSubtotal() != null ? item.getSubtotal() : 0.0)
@@ -62,7 +76,6 @@ public class OrdenService {
 
         log.info("Monto total verificado para la orden: ${}", totalOrden);
 
-        // 3. Guardar orden con estado "PROCESADA"
         Orden nuevaOrden = new Orden();
         nuevaOrden.setIdUsuario(idUsuario);
         nuevaOrden.setTotal(totalOrden);
@@ -72,7 +85,6 @@ public class OrdenService {
         Orden ordenGuardada = ordenRepository.save(nuevaOrden);
         log.info("Orden guardada exitosamente con ID={} en estado PROCESADA", ordenGuardada.getId());
 
-        // 4. Vaciar el carrito del usuario de forma síncrona
         log.info("Solicitando vaciado síncrono del carrito para el usuario ID={}", idUsuario);
         try {
             carritoClient.vaciar(idUsuario);
@@ -104,6 +116,16 @@ public class OrdenService {
 
     public List<OrdenDTO> buscarPorUsuario(Long idUsuario) {
         log.info("Buscando órdenes del usuario ID={}", idUsuario);
+
+        try {
+            userClient.getUserById(idUsuario);
+        } catch (FeignException.NotFound e) {
+            log.warn("Intento de listar órdenes para un usuario que no existe en el sistema: ID={}", idUsuario);
+            throw new RecursoNoEncontradoException("El usuario especificado no existe.");
+        } catch (FeignException e) {
+            log.error("No se pudo conectar con Usuarios para validar el listado de órdenes; continuando por tolerancia a fallos.");
+        }
+
         return ordenRepository.findByIdUsuario(idUsuario).stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
