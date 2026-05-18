@@ -37,9 +37,12 @@ public class OrdenService {
         this.ordenRepository = ordenRepository;
     }
 
-    @Transactional
-    public OrdenDTO crearOrden(Long idUsuario) {
-        log.info("Iniciando creación de orden para el usuario ID={}", idUsuario);
+@Transactional
+    public OrdenDTO crearOrden(cl.duoc.order_service.dto.OrdenCreateDTO dto) {
+        // Extraemos el idUsuario que viene dentro del JSON del Body
+        Long idUsuario = dto.getIdUsuario();
+
+        log.info("Iniciando creación de orden para el usuario ID={} (Recibido desde RequestBody)", idUsuario);
         log.info("Solicitando validación de existencia para usuario ID={} al servicio remoto de Usuarios", idUsuario);
         try {
             UserDTO usuario = userClient.getUserById(idUsuario);
@@ -74,12 +77,12 @@ public class OrdenService {
                                  .mapToDouble(item -> item.getSubtotal() != null ? item.getSubtotal() : 0.0)
                                  .sum();
 
-        log.info("Monto total verificado para la orden: ${}", totalOrden);
+        log.info("Monto total verificado dinámicamente mediante el carrito: ${} (Se descarta el total enviado por Postman por seguridad)", totalOrden);
 
         Orden nuevaOrden = new Orden();
         nuevaOrden.setIdUsuario(idUsuario);
-        nuevaOrden.setTotal(totalOrden);
-        nuevaOrden.setFechaCreacion(LocalDateTime.now());
+        nuevaOrden.setTotal(totalOrden); // Se sigue calculando de forma segura en el backend
+        nuevaOrden.setFechaCreacion(LocalDateTime.now()); // Auto-asignado
         nuevaOrden.setEstado("PROCESADA");
         
         Orden ordenGuardada = ordenRepository.save(nuevaOrden);

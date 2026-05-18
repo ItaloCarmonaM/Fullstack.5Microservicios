@@ -10,6 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable;
     url = "${user.service.url:http://localhost:8080}"
 )
 public interface UserClient {
-    @GetMapping("/api/v1/usuarios/{id}") 
+    @GetMapping("/api/v1/users/{id}") 
     UserDTO getUserById(@PathVariable("id") Long id);
 }
