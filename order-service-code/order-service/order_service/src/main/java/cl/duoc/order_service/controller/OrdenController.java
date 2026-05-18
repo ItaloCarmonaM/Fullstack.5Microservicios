@@ -19,7 +19,6 @@ public class OrdenController {
         this.ordenService = ordenService;
     }
 
-    // Actualizado para recibir el Body con el DTO importado
     @PostMapping
     public ResponseEntity<OrdenDTO> crearOrden(@jakarta.validation.Valid @RequestBody OrdenCreateDTO dto) {
         return new ResponseEntity<>(ordenService.crearOrden(dto), HttpStatus.CREATED);
