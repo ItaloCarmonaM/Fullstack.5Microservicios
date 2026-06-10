@@ -111,7 +111,7 @@ public class InventoryController {
         ),
         @ApiResponse(
             responseCode = "404",
-            description = "No existe inventario para el libro   "
+            description = "No existe inventario para el libro"
         )
     })
     @GetMapping("/idLibro/{idLibro}")
