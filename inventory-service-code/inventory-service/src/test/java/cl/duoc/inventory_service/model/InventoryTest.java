@@ -2,7 +2,6 @@ package cl.duoc.inventory_service.model;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Pruebas Unitarias - Capa de Modelo (Inventory)")
@@ -35,8 +34,8 @@ class InventoryTest {
         Inventory invB = new Inventory(1L, 202L, 10);
 
         // Act & Assert
-        assertEquals(invA, invB, "Instancias con la misma estructura interna deben ser equivalentes");
-        assertEquals(invA.hashCode(), invB.hashCode(), "Si dos objetos son iguales, sus HashCodes deben coincidir");
+        assertEquals(invA, invB);
+        assertEquals(invA.hashCode(), invB.hashCode());
     }
 
     @Test

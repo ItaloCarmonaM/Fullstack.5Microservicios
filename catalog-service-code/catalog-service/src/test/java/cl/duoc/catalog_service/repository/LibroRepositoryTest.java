@@ -27,7 +27,6 @@ class LibroRepositoryTest {
         libroRepository.save(libro);
 
         // Act
-        // Buscamos con un patrón alterado de mayúsculas
         List<Libro> encontrados = libroRepository.findByTituloIgnoreCase("eStUdiO eN eScArLaTa");
 
         // Assert

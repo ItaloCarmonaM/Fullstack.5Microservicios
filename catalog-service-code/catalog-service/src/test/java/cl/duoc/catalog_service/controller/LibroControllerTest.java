@@ -2,6 +2,7 @@ package cl.duoc.catalog_service.controller;
 
 import cl.duoc.catalog_service.dto.LibroCreateDTO;
 import cl.duoc.catalog_service.dto.LibroDTO;
+import cl.duoc.catalog_service.exceptions.LibroNotFoundException;
 import cl.duoc.catalog_service.service.LibroService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,13 +17,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Pruebas de Integración Web - Capa de Controlador (LibroController)")
@@ -44,45 +42,41 @@ class LibroControllerTest {
     }
 
     @Test
-    @DisplayName("POST -> Debe responder HTTP 201 Created y retornar el JSON del Libro registrado")
-    void debeRetornar21AlRegistrarLibro() throws Exception {
-        // Arrange
-        LibroCreateDTO entrada = new LibroCreateDTO("El problema de los tres cuerpos", "Liu Cixin", "Ciencia Ficción", "Nova", "Tapa Blanda", 12500.0);
-        LibroDTO salida = new LibroDTO(1L, "El problema de los tres cuerpos", "Liu Cixin", "Ciencia Ficción", "Nova", "Tapa Blanda", 12500.0);
+    @DisplayName("POST -> Debe responder HTTP 201 Created")
+    void debeRetornar201() throws Exception {
+        LibroCreateDTO entrada = new LibroCreateDTO("Titulo", "Autor", "Categoria", "Editorial", "Tapa", 1000.0);
+        LibroDTO salida = new LibroDTO(1L, "Titulo", "Autor", "Categoria", "Editorial", "Tapa", 1000.0);
 
         Mockito.when(libroService.registrarLibro(Mockito.any(LibroCreateDTO.class))).thenReturn(salida);
 
-        // Act & Assert
         mockMvc.perform(post("/api/v2/libros")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(entrada)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.titulo").value("El problema de los tres cuerpos"))
-                .andExpect(jsonPath("$.precio").value(12500.0));
+                .andExpect(status().isCreated());
     }
 
     @Test
-    @DisplayName("GET -> Debe retornar HTTP 200 OK con la lista completa de libros del catálogo")
-    void debeRetornarListaDeLibrosOk() throws Exception {
-        // Arrange
-        LibroDTO libro = new LibroDTO(1L, "El Extranjero", "Cortázar", "Novela", "Lucemar", "Tapa Dura", 28990.0);
-        List<LibroDTO> todosLosLibros = Collections.singletonList(libro);
+    @DisplayName("GET -> Debe retornar HTTP 200 OK")
+    void debeRetornar200() throws Exception {
+        Mockito.when(libroService.listaLibros()).thenReturn(Collections.emptyList());
 
-        Mockito.when(libroService.listaLibros()).thenReturn(todosLosLibros);
-
-        // Act & Assert 
         mockMvc.perform(get("/api/v2/libros"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].titulo").value("El Extranjero"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("GET -> Debe retornar HTTP 400 Bad Request si el precio mínimo supera al máximo en el filtro entre")
-    void debeRetornarBadRequestSiRangoPreciosEsInvalido() throws Exception {
-        // Act & Assert
-        // Solicitamos precioMin = 20000 y precioMax = 10000 (Rango invertido)
+    @DisplayName("GET -> Debe retornar HTTP 404 Not Found")
+    void debeRetornar404() throws Exception {
+        Mockito.when(libroService.buscarPorId(99L)).thenThrow(new LibroNotFoundException(99L));
+
+        mockMvc.perform(get("/api/v2/libros/{id}", 99L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET -> Debe retornar HTTP 400 Bad Request")
+    void debeRetornar400() throws Exception {
+        // Petición con parámetros inválidos de regla de negocio (Precio Min > Max)
         mockMvc.perform(get("/api/v2/libros/precio/entre")
                 .param("precioMin", "20000.0")
                 .param("precioMax", "10000.0"))

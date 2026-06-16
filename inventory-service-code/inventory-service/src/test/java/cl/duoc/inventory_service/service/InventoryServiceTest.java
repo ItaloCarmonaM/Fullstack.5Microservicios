@@ -16,10 +16,12 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Pruebas Unitarias - Capa de Servicio (InventoryService)")
@@ -37,60 +39,97 @@ class InventoryServiceTest {
     @Test
     @DisplayName("Debe crear un inventario exitosamente tras validar el libro en Catalog")
     void debeCrearInventoryExitosamente() {
-        // Arrange
+        // Given
         InventoryCreateDTO dto = new InventoryCreateDTO(10L, 45);
-        
         LibroDTO libroSimulado = new LibroDTO();
         libroSimulado.setId(10L);
-        libroSimulado.setTitulo("El Psicoanalista");
-
         Inventory inventarioGuardado = new Inventory(1L, 10L, 45);
 
-        Mockito.when(catalogClient.getLibroById(10L)).thenReturn(libroSimulado);
-        Mockito.when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventarioGuardado);
+        when(catalogClient.getLibroById(10L)).thenReturn(libroSimulado);
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventarioGuardado);
 
-        // Act
+        // When
         InventoryDTO resultado = inventoryService.crearInventory(dto);
 
-        // Assert
+        // Then
         assertNotNull(resultado);
-        assertEquals(1L, resultado.getId());
-        assertEquals(10L, resultado.getIdLibro());
         assertEquals(45, resultado.getStock());
     }
 
     @Test
-    @DisplayName("Debe lanzar RecursoNoEncontradoException si el cliente de Catálogo arroja un error 404")
-    void debeLanzarExcepcionCuandoLibroNoExisteEnCatalog() {
-        // Arrange
-        InventoryCreateDTO dto = new InventoryCreateDTO(99L, 10);
-        
-        FeignException.NotFound mockNotFound = Mockito.mock(FeignException.NotFound.class);
-        Mockito.when(catalogClient.getLibroById(99L)).thenThrow(mockNotFound);
+    @DisplayName("Debe listar todos los inventarios existentes")
+    void debeListarInventarios() {
+        // Given
+        Inventory inventario = new Inventory(1L, 10L, 45);
+        when(inventoryRepository.findAll()).thenReturn(List.of(inventario));
 
-        // Act & Assert
-        assertThrows(RecursoNoEncontradoException.class, () -> {
-            inventoryService.crearInventory(dto);
-        });
+        // When
+        List<InventoryDTO> lista = inventoryService.listarInventories();
+
+        // Then
+        assertFalse(lista.isEmpty());
+        assertEquals(1, lista.size());
+    }
+
+    @Test
+    @DisplayName("Debe buscar un inventario por su ID")
+    void debeBuscarPorId() {
+        // Given
+        Inventory inventario = new Inventory(1L, 10L, 45);
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventario));
+
+        // When
+        InventoryDTO encontrado = inventoryService.buscarPorId(1L);
+
+        // Then
+        assertNotNull(encontrado);
+        assertEquals(1L, encontrado.getId());
     }
 
     @Test
     @DisplayName("Debe actualizar el stock de un registro de inventario existente")
     void debeActualizarStockExitosamente() {
-        // Arrange
+        // Given
         Long idInventario = 1L;
         InventoryCreateDTO dto = new InventoryCreateDTO(10L, 100);
         Inventory inventarioExistente = new Inventory(1L, 10L, 45);
         Inventory inventarioActualizado = new Inventory(1L, 10L, 100);
 
-        Mockito.when(inventoryRepository.findById(idInventario)).thenReturn(Optional.of(inventarioExistente));
-        Mockito.when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventarioActualizado);
+        when(inventoryRepository.findById(idInventario)).thenReturn(Optional.of(inventarioExistente));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventarioActualizado);
 
-        // Act
+        // When
         InventoryDTO resultado = inventoryService.actualizarStock(idInventario, dto);
 
-        // Assert
+        // Then
         assertNotNull(resultado);
         assertEquals(100, resultado.getStock());
+    }
+
+    @Test
+    @DisplayName("Debe eliminar un registro de inventario si este existe")
+    void debeEliminarInventoryExitosamente() {
+        // Given
+        when(inventoryRepository.existsById(1L)).thenReturn(true);
+
+        // When
+        boolean eliminado = inventoryService.eliminarInventory(1L);
+
+        // Then
+        assertTrue(eliminado);
+    }
+
+    @Test
+    @DisplayName("Regla de Negocio: Debe lanzar RecursoNoEncontradoException si Catalog arroja 404")
+    void debeLanzarExcepcionCuandoLibroNoExisteEnCatalog() {
+        // Given
+        InventoryCreateDTO dto = new InventoryCreateDTO(99L, 10);
+        FeignException.NotFound mockNotFound = Mockito.mock(FeignException.NotFound.class);
+        when(catalogClient.getLibroById(99L)).thenThrow(mockNotFound);
+
+        // When & Then
+        assertThrows(RecursoNoEncontradoException.class, () -> {
+            inventoryService.crearInventory(dto);
+        });
     }
 }

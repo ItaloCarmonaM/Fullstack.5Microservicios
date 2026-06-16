@@ -2,6 +2,8 @@ package cl.duoc.inventory_service.controller;
 
 import cl.duoc.inventory_service.dto.InventoryCreateDTO;
 import cl.duoc.inventory_service.dto.InventoryDTO;
+import cl.duoc.inventory_service.exception.GlobalExceptionHandler;
+import cl.duoc.inventory_service.exception.RecursoNoEncontradoException;
 import cl.duoc.inventory_service.service.InventoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.List;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -39,12 +38,14 @@ class InventoryControllerTest {
 
     @BeforeEach
     void setUp() {
-        this.mockMvc = MockMvcBuilders.standaloneSetup(inventoryController).build();
+        this.mockMvc = MockMvcBuilders.standaloneSetup(inventoryController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
     @Test
     @DisplayName("POST -> Debe responder HTTP 201 Created al registrar un inventario válido")
-    void debeRetornar201AlCrearInventario() throws Exception {
+    void devuelve201AlCrearInventario() throws Exception {
         // Arrange
         InventoryCreateDTO entrada = new InventoryCreateDTO(10L, 45);
         InventoryDTO salida = new InventoryDTO(1L, 10L, 45);
@@ -60,7 +61,7 @@ class InventoryControllerTest {
 
     @Test
     @DisplayName("GET -> Debe retornar HTTP 200 OK al consultar el stock por el ID del Libro")
-    void debeRetornar200AlBuscarPorIdLibro() throws Exception {
+    void devuelve200AlBuscarPorIdLibro() throws Exception {
         // Arrange
         Long idLibroBusqueda = 10L;
         InventoryDTO dtoSalida = new InventoryDTO(1L, idLibroBusqueda, 45);
@@ -73,14 +74,24 @@ class InventoryControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE -> Debe responder HTTP 204 No Content al eliminar un inventario existente")
-    void debeRetornar204AlEliminarExitosamente() throws Exception {
+    @DisplayName("GET -> Debe responder HTTP 404 Not Found cuando el recurso no existe")
+    void devuelve404CuandoIdNoExiste() throws Exception {
         // Arrange
-        Long idInventario = 1L;
-        Mockito.when(inventoryService.eliminarInventory(idInventario)).thenReturn(true);
+        Mockito.when(inventoryService.buscarPorId(999L))
+               .thenThrow(new RecursoNoEncontradoException("Registro de inventario no encontrado con el ID: 999"));
 
         // Act & Assert
-        mockMvc.perform(delete("/api/v2/inventories/{id}", idInventario))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v2/inventories/{id}", 999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST -> Debe responder HTTP 400 Bad Request al enviar un DTO con formato erróneo o incompleto")
+    void devuelve400AlEnviarDatosInvalidos() throws Exception {
+        // Act & Assert
+        mockMvc.perform(post("/api/v2/inventories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ \"idLibro\": , \"stock\": }"))
+                .andExpect(status().isBadRequest());
     }
 }

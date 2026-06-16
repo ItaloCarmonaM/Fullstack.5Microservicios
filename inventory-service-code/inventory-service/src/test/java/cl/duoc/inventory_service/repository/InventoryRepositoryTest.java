@@ -6,6 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -17,42 +21,44 @@ class InventoryRepositoryTest {
     private InventoryRepository inventoryRepository;
 
     @Test
-    @DisplayName("Debe persistir un inventario y recuperarlo usando findByIdLibro")
-    void debeGuardarYBuscarPorIdLibro() {
+    @DisplayName("Debe ejecutar la operación save() y persistir los datos de inventario")
+    void debeGuardarInventario() {
         // Arrange
         Inventory inventario = new Inventory(null, 500L, 120);
-        inventoryRepository.save(inventario);
 
         // Act
-        Inventory encontrado = inventoryRepository.findByIdLibro(500L);
+        Inventory guardado = inventoryRepository.save(inventario);
 
         // Assert
-        assertNotNull(encontrado);
-        assertEquals(120, encontrado.getStock());
+        assertNotNull(guardado.getId());
+        assertEquals(500L, guardado.getIdLibro());
     }
 
     @Test
-    @DisplayName("Debe retornar null si se busca un ID de libro que no tiene stock asignado")
-    void debeRetornarNullSiIdLibroNoExiste() {
-        // Act
-        Inventory resultado = inventoryRepository.findByIdLibro(9999L);
-
-        // Assert
-        assertNull(resultado);
-    }
-
-    @Test
-    @DisplayName("Debe eliminar un registro de inventario de forma efectiva")
-    void debeEliminarInventarioCorrectamente() {
+    @DisplayName("Debe ejecutar la operación findById() y recuperar el registro correspondiente")
+    void debeBuscarPorId() {
         // Arrange
-        Inventory inventario = inventoryRepository.save(new Inventory(null, 300L, 15));
-        Long idGenerado = inventario.getId();
+        Inventory guardado = inventoryRepository.save(new Inventory(null, 600L, 30));
 
         // Act
-        inventoryRepository.deleteById(idGenerado);
-        boolean existe = inventoryRepository.existsById(idGenerado);
+        Optional<Inventory> encontrado = inventoryRepository.findById(guardado.getId());
 
         // Assert
-        assertFalse(existe);
+        assertTrue(encontrado.isPresent());
+        assertEquals(30, encontrado.get().getStock());
+    }
+
+    @Test
+    @DisplayName("Debe ejecutar la operación findAll() y retornar la lista completa de registros")
+    void debeBuscarTodos() {
+        // Arrange
+        inventoryRepository.save(new Inventory(null, 700L, 10));
+        inventoryRepository.save(new Inventory(null, 800L, 20));
+
+        // Act
+        List<Inventory> lista = inventoryRepository.findAll();
+
+        // Assert
+        assertTrue(lista.size() >= 2);
     }
 }

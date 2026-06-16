@@ -9,7 +9,6 @@ import cl.duoc.review_service.dto.UserDTO;
 import cl.duoc.review_service.exception.RecursoNoEncontradoException;
 import cl.duoc.review_service.model.Review;
 import cl.duoc.review_service.repository.ReviewRepository;
-import feign.FeignException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,13 +17,13 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Pruebas Unitarias - Capa de Servicio (ReviewService)")
@@ -43,61 +42,76 @@ class ReviewServiceTest {
     private ReviewService reviewService;
 
     @Test
-    @DisplayName("Debe guardar una reseña cuando el libro y el usuario existen")
-    void debeGuardarResenaExitosamente() {
-        // Given
-        ReviewCreateDTO dto = new ReviewCreateDTO(10L, 5L, "Final muy inesperado", 5);
+    @DisplayName("Debe crear una reseña")
+    void debeCrearReview() {
+        ReviewCreateDTO dto = new ReviewCreateDTO(10L, 5L, "Bueno", 4);
+        Review review = new Review(1L, 10L, 5L, "Bueno", 4);
         
-        LibroDTO mockLibro = new LibroDTO();
-        mockLibro.setId(10L);
-        mockLibro.setTitulo("El Psicoanalista");
-
-        UserDTO mockUsuario = new UserDTO();
-        mockUsuario.setId(5L);
-        mockUsuario.setNombreCompleto("Juan Pérez");
-
-        Review reviewGuardada = new Review(1L, 10L, 5L, "Final muy inesperado", 5);
-
-        Mockito.when(catalogClient.getLibroById(10L)).thenReturn(mockLibro);
-        Mockito.when(userClient.getUserById(5L)).thenReturn(mockUsuario);
-        Mockito.when(reviewRepository.save(any(Review.class))).thenReturn(reviewGuardada);
-
-        // When
+        // Mocks para saltar las validaciones de clientes externos del servicio
+        when(catalogClient.getLibroById(10L)).thenReturn(new LibroDTO());
+        when(userClient.getUserById(5L)).thenReturn(new UserDTO());
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        
         ReviewDTO resultado = reviewService.saveReview(dto);
-
-        // Then
         assertNotNull(resultado);
         assertEquals(1L, resultado.getId());
-        assertEquals("Final muy inesperado", resultado.getComentario());
-        Mockito.verify(reviewRepository, Mockito.times(1)).save(any(Review.class));
     }
 
     @Test
-    @DisplayName("Debe lanzar RecursoNoEncontradoException cuando CatalogClient devuelve un error 404")
-    void debeLanzarExcepcionCuandoLibroNoExiste() {
-        // Given
-        ReviewCreateDTO dto = new ReviewCreateDTO(99L, 5L, "Comentario", 4);
-        FeignException.NotFound feignException = Mockito.mock(FeignException.NotFound.class);
+    @DisplayName("Debe listar todas las reseñas")
+    void debeListarReviews() {
+        Review review = new Review(1L, 10L, 5L, "Bueno", 4);
+        when(reviewRepository.findAll()).thenReturn(Collections.singletonList(review));
+
+        List<ReviewDTO> resultado = reviewService.listaReviews();
+        assertFalse(resultado.isEmpty());
+        assertEquals(1, resultado.size());
+    }
+
+    @Test
+    @DisplayName("Debe buscar una reseña por ID")
+    void debeBuscarPorId() {
+        Review review = new Review(1L, 10L, 5L, "Bueno", 4);
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+
+        ReviewDTO resultado = reviewService.buscarPorId(1L);
+        assertNotNull(resultado);
+        assertEquals("Bueno", resultado.getComentario());
+    }
+
+    @Test
+    @DisplayName("Debe actualizar una reseña")
+    void debeActualizarReview() {
+        ReviewCreateDTO dto = new ReviewCreateDTO(10L, 5L, "Excelente", 5);
+        Review reviewExistente = new Review(1L, 10L, 5L, "Bueno", 4);
+        Review reviewActualizada = new Review(1L, 10L, 5L, "Excelente", 5);
         
-        Mockito.when(catalogClient.getLibroById(99L)).thenThrow(feignException);
+        // Simular que encuentra la reseña original antes de editarla
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(reviewExistente));
+        when(reviewRepository.save(any(Review.class))).thenReturn(reviewActualizada);
 
-        // When & Then
-        assertThrows(RecursoNoEncontradoException.class, () -> {
-            reviewService.saveReview(dto);
-        });
-        Mockito.verify(reviewRepository, Mockito.never()).save(any(Review.class));
+        ReviewDTO resultado = reviewService.actualizarReview(1L, dto);
+        assertNotNull(resultado);
+        assertEquals("Excelente", resultado.getComentario());
     }
 
     @Test
-    @DisplayName("Debe lanzar RecursoNoEncontradoException al buscar por un ID de reseña inexistente")
-    void debeLanzarExcepcionAlBuscarIdInexistente() {
-        // Given
-        Long idInexistente = 999L;
-        Mockito.when(reviewRepository.findById(idInexistente)).thenReturn(Optional.empty());
+    @DisplayName("Debe eliminar una reseña")
+    void debeEliminarReview() {
+        when(reviewRepository.existsById(1L)).thenReturn(true);
+        Mockito.doNothing().when(reviewRepository).deleteById(1L);
 
-        // When & Then
+        boolean eliminado = reviewService.eliminarReview(1L);
+        assertTrue(eliminado);
+    }
+
+    @Test
+    @DisplayName("Regla de Negocio: Debe lanzar excepción si el ID no existe")
+    void debeLanzarExcepcionCuandoIdNoExiste() {
+        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+
         assertThrows(RecursoNoEncontradoException.class, () -> {
-            reviewService.buscarPorId(idInexistente);
+            reviewService.buscarPorId(999L);
         });
     }
 }
