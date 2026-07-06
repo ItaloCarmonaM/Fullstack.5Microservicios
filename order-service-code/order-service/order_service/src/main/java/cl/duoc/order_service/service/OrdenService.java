@@ -5,6 +5,7 @@ import cl.duoc.order_service.client.UserClient;
 import cl.duoc.order_service.dto.CarritoDTO;
 import cl.duoc.order_service.dto.OrdenDTO;
 import cl.duoc.order_service.dto.UserDTO;
+import cl.duoc.order_service.dto.OrdenCreateDTO;
 import cl.duoc.order_service.exception.RecursoNoEncontradoException;
 import cl.duoc.order_service.exception.ServicioNoDisponibleException;
 import cl.duoc.order_service.model.Orden;
@@ -24,7 +25,6 @@ import java.util.stream.Collectors;
 public class OrdenService {
 
     private static final Logger log = LoggerFactory.getLogger(OrdenService.class);
-
     private final OrdenRepository ordenRepository;
 
     @Autowired
@@ -37,96 +37,99 @@ public class OrdenService {
         this.ordenRepository = ordenRepository;
     }
 
-@Transactional
-    public OrdenDTO crearOrden(cl.duoc.order_service.dto.OrdenCreateDTO dto) {
-        // Extraemos el idUsuario que viene dentro del JSON del Body
+    @Transactional
+    public OrdenDTO crearOrden(OrdenCreateDTO dto) {
         Long idUsuario = dto.getIdUsuario();
 
-        log.info("Iniciando creación de orden para el usuario ID={} (Recibido desde RequestBody)", idUsuario);
+        log.info("Iniciando flujo de creación de orden para el usuario ID={}", idUsuario);
         log.info("Solicitando validación de existencia para usuario ID={} al servicio remoto de Usuarios", idUsuario);
+        
         try {
             UserDTO usuario = userClient.getUserById(idUsuario);
-            log.info("Usuario verificado con éxito en la otra EC2. Comprador: '{}'", usuario.getNombreCompleto());
+            log.info("Usuario verificado con éxito. Comprador registrado: '{}'", usuario.getNombreCompleto());
         } catch (FeignException.NotFound e) {
-            log.warn("Servicio de Usuarios respondió 404: El usuario ID={} no existe", idUsuario);
+            log.warn("Servicio de Usuarios respondió con error 404: El usuario ID={} no existe", idUsuario);
             throw new RecursoNoEncontradoException("No se puede procesar la orden: El usuario especificado no existe.");
         } catch (FeignException e) {
-            log.error("Error crítico de comunicación con la EC2 de Usuarios: {}", e.getMessage());
-            throw new ServicioNoDisponibleException("El servicio de verificación de usuarios no está disponible.");
+            log.error("Error de comunicación de red con el microservicio de Usuarios: {}", e.getMessage());
+            throw new ServicioNoDisponibleException("El servicio de verificación de usuarios no está disponible temporeramente.");
         }
 
-        log.info("Solicitando ítems del carrito con montos precalculados al servicio Cart para usuario ID={}", idUsuario);
+        log.info("Solicitando ítems del carrito al servicio Cart para usuario ID={}", idUsuario);
         List<CarritoDTO> items;
         try {
             items = carritoClient.obtenerCarrito(idUsuario);
+            log.info("Respuesta exitosa recibida del servicio Cart para usuario ID={}", idUsuario);
         } catch (FeignException.NotFound e) {
-            log.warn("Servicio Cart respondió 404: No se encontró el carrito para el usuario ID={}", idUsuario);
+            log.warn("Servicio Cart respondió con error 404 para el usuario ID={}", idUsuario);
             throw new RecursoNoEncontradoException("No se puede procesar la orden: El carrito del usuario no existe.");
         } catch (FeignException e) {
-            log.error("Falla de comunicación con el servicio Cart: {}", e.getMessage());
+            log.error("Falla crítica de comunicación con el servicio de Carritos: {}", e.getMessage());
             throw new ServicioNoDisponibleException("El servicio de Carrito no se encuentra disponible.");
         }
 
         if (items == null || items.isEmpty()) {
-            log.warn("Intento de compra rechazado: El carrito del usuario ID={} está vacío", idUsuario);
+            log.warn("Operación rechazada: El carrito del usuario ID={} no contiene productos", idUsuario);
             throw new RuntimeException("El carrito está vacío.");
         }
 
         log.info("Calculando total acumulado usando subtotales del carrito...");
         double totalOrden = items.stream()
-                                 .mapToDouble(item -> item.getSubtotal() != null ? item.getSubtotal() : 0.0)
-                                 .sum();
+                .mapToDouble(item -> item.getSubtotal() != null ? item.getSubtotal() : 0.0)
+                .sum();
 
-        log.info("Monto total verificado dinámicamente mediante el carrito: ${} (Se descarta el total enviado por Postman por seguridad)", totalOrden);
+        log.info("Monto total verificado dinámicamente: ${}", totalOrden);
 
         Orden nuevaOrden = new Orden();
         nuevaOrden.setIdUsuario(idUsuario);
-        nuevaOrden.setTotal(totalOrden); // Se sigue calculando de forma segura en el backend
-        nuevaOrden.setFechaCreacion(LocalDateTime.now()); // Auto-asignado
+        nuevaOrden.setTotal(totalOrden);
+        nuevaOrden.setFechaCreacion(LocalDateTime.now());
         nuevaOrden.setEstado("PROCESADA");
         
         Orden ordenGuardada = ordenRepository.save(nuevaOrden);
-        log.info("Orden guardada exitosamente con ID={} en estado PROCESADA", ordenGuardada.getId());
+        log.info("Evento de negocio: Orden guardada de forma local con ID={} en estado PROCESADA", ordenGuardada.getId());
 
-        log.info("Solicitando vaciado síncrono del carrito para el usuario ID={}", idUsuario);
+        log.info("Enviando petición síncrona de vaciado al servicio Cart para el usuario ID={}", idUsuario);
         try {
             carritoClient.vaciar(idUsuario);
-            log.info("El servicio Cart limpió el carrito del usuario ID={} correctamente", idUsuario);
-        } catch (Exception e) {
-            log.error("Alerta de consistencia: No se pudo vaciar el carrito del usuario ID={} tras procesar la orden: {}", 
+            log.info("El servicio Cart limpió de forma exitosa el carrito del usuario ID={}", idUsuario);
+        } catch (FeignException e) {
+            log.error("Alerta de consistencia: No se pudo vaciar el carrito del usuario ID={} tras procesar la compra. Detalles: {}", 
                       idUsuario, e.getMessage());
         }
 
+        log.info("Cita/Orden creada exitosamente: ID={}", ordenGuardada.getId());
         return convertirADTO(ordenGuardada);
     }
 
     public List<OrdenDTO> listarTodas() {
-        log.info("Solicitando listado completo de todas las órdenes");
+        log.info("Recuperando listado histórico de todas las órdenes");
         return ordenRepository.findAll().stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
     }
 
     public OrdenDTO buscarPorId(Long id) {
-        log.info("Buscando orden por ID={}", id);
+        log.info("Buscando orden específica por ID={}", id);
         return ordenRepository.findById(id)
                 .map(this::convertirADTO)
                 .orElseThrow(() -> {
-                    log.warn("Intento fallido de buscar orden: ID={} no existe", id);
+                    log.warn("Error en consulta: La orden con ID={} no existe", id);
                     return new RecursoNoEncontradoException("Orden no encontrada: " + id);
                 });
     }
 
     public List<OrdenDTO> buscarPorUsuario(Long idUsuario) {
         log.info("Buscando órdenes del usuario ID={}", idUsuario);
-
         try {
             userClient.getUserById(idUsuario);
+            log.info("Validación de usuario ID={} correcta para extracción de órdenes", idUsuario);
         } catch (FeignException.NotFound e) {
-            log.warn("Intento de listar órdenes para un usuario que no existe en el sistema: ID={}", idUsuario);
+            log.warn("Fallo de consulta: Intento de listar órdenes para un usuario inexistente ID={}", idUsuario);
             throw new RecursoNoEncontradoException("El usuario especificado no existe.");
         } catch (FeignException e) {
-            log.error("No se pudo conectar con Usuarios para validar el listado de órdenes; continuando por tolerancia a fallos.");
+            log.error("Falla de red con Usuarios. Continuando por tolerancia a fallos en lectura: {}", e.getMessage());
+            throw new ServicioNoDisponibleException("El servicio de usuarios no está disponible.");
         }
 
         return ordenRepository.findByIdUsuario(idUsuario).stream()
@@ -135,26 +138,26 @@ public class OrdenService {
     }
 
     public OrdenDTO actualizarEstado(Long id, String nuevoEstado) {
-        log.info("Solicitud para cambiar estado de la orden ID={} a '{}'", id, nuevoEstado);
+        log.info("Solicitud para actualizar estado de la orden ID={} a '{}'", id, nuevoEstado);
         return ordenRepository.findById(id).map(o -> {
             o.setEstado(nuevoEstado.toUpperCase());
             Orden actualizada = ordenRepository.save(o);
-            log.info("Estado de orden ID={} cambiado con éxito", id);
+            log.info("Evento de negocio: Estado de orden ID={} modificado con éxito", id);
             return convertirADTO(actualizada);
         }).orElseThrow(() -> {
-            log.warn("No se pudo actualizar estado: Orden ID={} no existe", id);
+            log.warn("Fallo de actualización: La orden con ID={} no existe", id);
             return new RecursoNoEncontradoException("Orden no encontrada: " + id);
         });
     }
 
     public boolean eliminarOrden(Long id) {
-        log.info("Intentando eliminar orden ID={}", id);
+        log.info("Solicitud para eliminar físicamente la orden ID={}", id);
         if (ordenRepository.existsById(id)) {
             ordenRepository.deleteById(id);
-            log.info("Orden ID={} eliminada con éxito", id);
+            log.info("Evento de negocio: Orden ID={} eliminada correctamente de la base de datos", id);
             return true;
         }
-        log.warn("No se pudo eliminar: Orden ID={} no existe", id);
+        log.warn("Fallo de eliminación: La orden ID={} no existe en los registros", id);
         return false;
     }
 
