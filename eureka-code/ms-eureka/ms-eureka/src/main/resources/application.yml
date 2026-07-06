@@ -1,0 +1,12 @@
+server:
+    port: 8761
+spring:
+    application:
+        name: ms-eureka
+eureka:
+    instance:
+        hostname: localhost
+    client:
+        register-with-eureka: false
+        fetch-registry: false
+eureka.server.wait-time-in-ms-when-sync-empty: 10

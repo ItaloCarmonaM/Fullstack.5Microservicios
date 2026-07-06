@@ -1,0 +1,88 @@
+server:
+  port: 8090
+spring:
+  application:
+    name: ms-gateway
+  cloud:
+    gateway:
+      routes:
+        # ─── MICROSERVICIOS EN EC2: 3.231.18.119 ───────────────────
+        - id: review-route
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/v2/reviews/**
+          filters:
+            - PreserveHostHeader
+
+        - id: catalog-route
+          uri: lb://CATALOG-SERVICE
+          predicates:
+            - Path=/api/v2/libros/**
+          filters:
+            - PreserveHostHeader
+
+        - id: inventory-route
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/v2/inventories/**
+          filters:
+            - PreserveHostHeader
+
+        - id: cart-route
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/v1/carritos/**
+          filters:
+            - PreserveHostHeader
+
+        - id: order-route
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/ordenes/**
+          filters:
+            - PreserveHostHeader
+
+        # ─── MICROSERVICIOS EN EC2: 44.196.219.155 ─────────────────
+        - id: user-route
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/v2/users/**
+          filters:
+            - PreserveHostHeader
+
+        - id: payment-route
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/v1/pagos/**
+          filters:
+            - PreserveHostHeader
+
+        - id: logistic-route
+          uri: lb://LOGISTIC-SERVICE
+          predicates:
+            - Path=/api/v1/envios/**
+          filters:
+            - PreserveHostHeader
+
+        - id: comm-route
+          uri: lb://COMM-SERVICE
+          predicates:
+            - Path=/api/v1/comms/**
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-route
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/v2/auth/**
+          filters:
+            - PreserveHostHeader
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://ms-eureka:8761/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

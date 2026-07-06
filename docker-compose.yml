@@ -1,7 +1,40 @@
+version: '3.8'
+
 services:
-  # -----------------------------------------------------------
+
+  # ===========================================================
+  # INFRAESTRUCTURA DE RED (Service Discovery & API Gateway)
+  # ===========================================================
+
+  # ── CONTENEDOR 1: Servidor Eureka ─────────────────────────────────
+  contenedor-eureka:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: ms-eureka
+    ports:
+      - "8761:8761"   # Puerto del Dashboard de Eureka
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./eureka-code/ms-eureka:/app
+    working_dir: /app
+
+  # ── CONTENEDOR 2: API Gateway ─────────────────────────────────────
+  contenedor-gateway:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: ms-gateway
+    ports:
+      - "8090:8090"   # Puerto único de entrada pública
+    networks:
+      - red_interna_proyecto
+    command: tail -f /dev/null
+    volumes:
+      - ./api-gateway-code/ms-gateway:/app
+    working_dir: /app
+
+  # ===========================================================
   # M2. CatalogService (Catálogo de Libros)
-  # -----------------------------------------------------------
+  # ===========================================================
   db-catalog:
     image: mysql:8.0
     container_name: db_catalog
@@ -33,9 +66,9 @@ services:
       - SPRING_DATASOURCE_USERNAME=desarrollador
       - SPRING_DATASOURCE_PASSWORD=password_seguro_123
 
-  # -----------------------------------------------------------
+  # ===========================================================
   # M3. InventoryService (Inventario/Stock)
-  # -----------------------------------------------------------
+  # ===========================================================
   db-inventory:
     image: mysql:8.0
     container_name: db_inventory
@@ -66,12 +99,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db_inventory:3306/inventory_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=desarrollador
       - SPRING_DATASOURCE_PASSWORD=password_seguro_123
-      # Comunicación Feign interna (Usa el container_name del catálogo)
       - CATALOG_SERVICE_URL=http://catalog-service-container:8081
 
-  # -----------------------------------------------------------
+  # ===========================================================
   # M4. CartService (Gestión de Carrito de Compras)
-  # -----------------------------------------------------------
+  # ===========================================================
   db-cart:
     image: mysql:8.0
     container_name: db_cart
@@ -102,14 +134,13 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db_cart:3306/cart_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=desarrollador
       - SPRING_DATASOURCE_PASSWORD=password_seguro_123
-      # El carrito mira al catálogo y al inventario dentro de tu misma red
       - CATALOG_SERVICE_URL=http://catalog-service-container:8081
       - INVENTORY_SERVICE_URL=http://inventory-service-container:8082
       - USERS_URL=http://44.196.219.155:8080
 
-  # -----------------------------------------------------------
+  # ===========================================================
   # M5. OrderService (Gestión de Ordenes de Compra)
-  # -----------------------------------------------------------
+  # ===========================================================
   db-order:
     image: mysql:8.0
     container_name: db_order
@@ -140,14 +171,12 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db_order:3306/order_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=desarrollador
       - SPRING_DATASOURCE_PASSWORD=password_seguro_123
-      # La orden necesita comunicarse con tu carrito local
       - CART_SERVICE_URL=http://cart-service-container:8083
-      
       - USERS_URL=http://44.196.219.155:8080
 
-  # -----------------------------------------------------------
+  # ===========================================================
   # MICROSERVICIO 9: ReviewService (Valoraciones y Comentarios)
-  # -----------------------------------------------------------
+  # ===========================================================
   db-review:
     image: mysql:8.0
     container_name: db_review
@@ -178,9 +207,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db_review:3306/review_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=desarrollador
       - SPRING_DATASOURCE_PASSWORD=password_seguro_123
-
       - CATALOG_SERVICE_URL=http://catalog-service-container:8081
-
       - USERS_URL=http://44.196.219.155:8080
 
 networks:
@@ -189,7 +216,8 @@ networks:
 
 volumes:
   persistencia_catalog:
-  persistencia_review:
   persistencia_inventory:
   persistencia_cart:
   persistencia_order:
+  persistencia_review:
+  persistencia_db: 
