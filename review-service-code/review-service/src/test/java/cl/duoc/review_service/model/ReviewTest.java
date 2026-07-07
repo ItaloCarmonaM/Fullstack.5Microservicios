@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Pruebas Unitarias - Capa de Modelo (Review)")
-class ReviewTest {
+public class ReviewTest {
 
     @Test
     @DisplayName("Debe verificar el constructor vacío")
-    void debeVerificarConstructorVacio() {
+    public void debeVerificarConstructorVacio() {
         Review review = new Review();
         assertNull(review.getId());
         assertNull(review.getComentario());
@@ -18,7 +18,7 @@ class ReviewTest {
 
     @Test
     @DisplayName("Debe verificar el constructor completo y getters")
-    void debeVerificarConstructorCompleto() {
+    public void debeVerificarConstructorCompleto() {
         Review review = new Review(1L, 10L, 5L, "Excelente libro", 5);
         
         assertEquals(1L, review.getId());
@@ -30,7 +30,7 @@ class ReviewTest {
 
     @Test
     @DisplayName("Debe verificar setters y getters")
-    void debeVerificarSettersYGetters() {
+    public void debeVerificarSettersYGetters() {
         Review review = new Review();
         review.setId(2L);
         review.setComentario("Modificado");
@@ -41,7 +41,7 @@ class ReviewTest {
 
     @Test
     @DisplayName("Debe verificar campo requerido (Comentario no puede estar vacío)")
-    void debeVerificarCampoRequerido() {
+    public void debeVerificarCampoRequerido() {
         Review review = new Review();
         review.setComentario("");
         assertTrue(review.getComentario().isEmpty(), "El comentario es un campo requerido");
